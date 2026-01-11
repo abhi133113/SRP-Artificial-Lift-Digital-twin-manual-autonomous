@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictive Maintenance | Engineer's Deadline</title>
+    <link rel="stylesheet" href="static/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR NAVIGATION -->
+        <div class="sidebar" id="sidebar">
+            <button class="toggle-btn" id="sidebarToggle">☰</button>
+            <nav class="nav-links">
+                <a href="/" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span class="text">Dashboard</span>
+                </a>
+                <a href="/deadlines.html" class="nav-item active">
+                    <span class="icon">⏳</span>
+                    <span class="text">Maintenance</span>
+                </a>
+                <a href="/analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span class="text">Analytics</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- HEADER -->
+        <header class="header">
+            <div class="header-left">
+                <a href="/" class="back-btn">← DASHBOARD</a>
+                <h1>Predictive Maintenance</h1>
+            </div>
+            <div class="header-right">
+                <div class="status-indicator online"></div>
+                <span class="mono">LIVE CONNECTION</span>
+            </div>
+        </header>
+
+        <main class="deadline-grid">
+            <!-- MAIN DEADLINE CARD -->
+            <section class="glass-panel deadline-card">
+                <div class="deadline-header">
+                    <h2>⏳ Estimated Time to Failure (TTF)</h2>
+                    <span class="urgency-badge" id="urgencyBadge">CALCULATING...</span>
+                </div>
+
+                <div class="countdown-display">
+                    <div class="time-unit">
+                        <span class="value mono" id="ttfHours">--</span>
+                        <span class="label">HOURS</span>
+                    </div>
+                    <div class="separator">:</div>
+                    <div class="time-unit">
+                        <span class="value mono" id="ttfMinutes">--</span>
+                        <span class="label">MINUTES</span>
+                    </div>
+                </div>
+
+                <div class="risk-factors">
+                    <div class="factor">
+                        <span class="label">Rod Stress Impact</span>
+                        <div class="progress-bar">
+                            <div class="fill" id="stressFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                    <div class="factor">
+                        <span class="label">Fluid Pound Impact</span>
+                        <div class="progress-bar">
+                            <div class="fill" id="shockFill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- MAINTENANCE CHECKLIST -->
+            <section class="glass-panel checklist-card">
+                <h2>🛠️ Engineer's Action Plan</h2>
+                <ul class="checklist" id="actionList">
+                    <li class="check-item">
+                        <input type="checkbox" id="c1">
+                        <label for="c1">Inspect Polished Rod for pitting</label>
+                    </li>
+                    <li class="check-item">
+                        <input type="checkbox" id="c2">
+                        <label for="c2">Check VFD parameters</label>
+                    </li>
+                    <li class="check-item">
+                        <input type="checkbox" id="c3">
+                        <label for="c3">Verify stuffing box lubrication</label>
+                    </li>
+                    <li class="check-item critical">
+                        <input type="checkbox" id="c4">
+                        <label for="c4">URGENT: Reduce SPM if Fillage < 70%</label>
+                    </li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Sidebar Logic
+        const sidebar = document.getElementById('sidebar');
+        const sidebarToggle = document.getElementById('sidebarToggle');
+        if (sidebarToggle) {
+            sidebarToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('active');
+                sidebarToggle.textContent = sidebar.classList.contains('active') ? '×' : '☰';
+            });
+        }
+
+        // Simple WebSocket for Deadlines Page
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${window.location.host}/websocket`);
+
+        const ttfHours = document.getElementById('ttfHours');
+        const ttfMinutes = document.getElementById('ttfMinutes');
+        const urgencyBadge = document.getElementById('urgencyBadge');
+        const stressFill = document.getElementById('stressFill');
+        const shockFill = document.getElementById('shockFill');
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.analysis && data.analysis.ttf) {
+                const ttf = data.analysis.ttf;
+
+                // Update Timer
+                const totalHours = ttf.hours;
+                const h = Math.floor(totalHours);
+                const m = Math.floor((totalHours - h) * 60);
+
+                ttfHours.textContent = h.toString().padStart(2, '0');
+                ttfMinutes.textContent = m.toString().padStart(2, '0');
+
+                // Update Urgency
+                urgencyBadge.textContent = ttf.urgency;
+                urgencyBadge.className = `urgency-badge ${ttf.urgency.toLowerCase().replace(' ', '-')}`;
+
+                // Update Factors (Inverse: Lower factor = Higher Risk/Impact)
+                // stress_factor 1.0 = Low Risk (0% bar), 0.1 = High Risk (90% bar)
+                const stressPct = (1.0 - ttf.stress_factor) * 100;
+                const shockPct = (1.0 - ttf.shock_factor) * 100;
+
+                stressFill.style.width = `${stressPct}%`;
+                shockFill.style.width = `${shockPct}%`;
+
+                // Color coding
+                stressFill.style.backgroundColor = stressPct > 50 ? '#ff0055' : '#00ff88';
+                shockFill.style.backgroundColor = shockPct > 50 ? '#ff0055' : '#00ff88';
+            }
+        };
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SRP Autonomous Twin | Mission Control</title>
+    <link rel="stylesheet" href="static/style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR NAVIGATION -->
+        <div class="sidebar" id="sidebar">
+            <button class="toggle-btn" id="sidebarToggle">☰</button>
+            <nav class="nav-links">
+                <a href="/" class="nav-item active">
+                    <span class="icon">📊</span>
+                    <span class="text">Dashboard</span>
+                </a>
+                <a href="/deadlines.html" class="nav-item">
+                    <span class="icon">⏳</span>
+                    <span class="text">Maintenance</span>
+                </a>
+                <a href="/analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span class="text">Analytics</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- HEADER (The HUD Bar) -->
+        <header class="header">
+            <div class="header-left">
+                <div class="status-indicator" id="connectionStatus"></div>
+                <h1>SRP Autonomous Twin</h1>
+                <!-- Signal Confidence -->
+                <div class="signal-indicator" id="signalIndicator" title="Sensor SNR">
+                    <div class="signal-bar"></div>
+                    <div class="signal-bar"></div>
+                    <div class="signal-bar"></div>
+                    <div class="signal-bar"></div>
+                </div>
+            </div>
+            <div class="header-right">
+                <!-- Mission Briefing Button -->
+                <button class="briefing-btn" id="openOverlay">
+                    <span class="icon">🚀</span> MISSION BRIEF
+                </button>
+                <div class="metric-badge">
+                    <span class="label">Strokes Saved</span>
+                    <span class="value mono" id="strokesSaved">0</span>
+                </div>
+                <div class="metric-badge">
+                    <span class="label">Energy Saved</span>
+                    <span class="value mono" id="energySaved">0.00 kWh</span>
+                </div>
+                <!-- Shadow Mode Toggle -->
+                <div class="mode-toggle">
+                    <label class="toggle-label">
+                        <input type="checkbox" id="modeToggle">
+                        <span class="slider"></span>
+                        <span class="toggle-text" id="modeText">ADVISORY</span>
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <!-- DASHBOARD GRID (3 Zones) -->
+        <main class="dashboard-grid">
+
+            <!-- ZONE 1: THE PULSE (Left Panel - Real-Time Physics) -->
+            <section class="glass-panel zone-pulse">
+                <div class="panel-header">
+                    <h2>📡 Dual Dynacard (Surface + Downhole)</h2>
+                    <span class="timestamp mono" id="lastUpdated">--:--:--</span>
+                </div>
+
+                <!-- Dual Dynacard Chart -->
+                <div class="dynacard-chart-container">
+                    <canvas id="dynacardChart"></canvas>
+                    <div class="dynacard-legend">
+                        <span class="legend-item"><span class="dot surface"></span>Surface (Measured)</span>
+                        <span class="legend-item"><span class="dot downhole"></span>Downhole (Calculated)</span>
+                    </div>
+                </div>
+
+                <!-- Virtual Pump Animation -->
+                <div class="pump-animation">
+                    <div class="pump-label">PUMP STROKE</div>
+                    <div class="pump-track">
+                        <div class="pump-rod" id="pumpRod"></div>
+                    </div>
+                    <div class="pump-speed mono" id="pumpSpeed">-- SPM</div>
+                </div>
+            </section>
+
+            <!-- ZONE 2: THE BRAIN (Center Panel - AI & Insights) -->
+            <section class="glass-panel zone-brain">
+                <div class="panel-header">
+                    <h2>🧠 Pump Fillage</h2>
+                </div>
+
+                <!-- Fillage Gauge with Ghost Needle -->
+                <div class="gauge-container">
+                    <div class="gauge-wrapper">
+                        <canvas id="fillageGauge"></canvas>
+                        <div class="gauge-value mono" id="fillageValue">--%</div>
+                        <div class="gauge-target" id="gaugeTarget">Target: 90%</div>
+                    </div>
+                    <div class="gauge-zones">
+                        <span class="zone-label danger">POUND</span>
+                        <span class="zone-label optimal">OPTIMAL</span>
+                        <span class="zone-label caution">FULL</span>
+                    </div>
+                </div>
+
+                <!-- Goodman Diagram (Structural Safety) -->
+                <div class="goodman-container">
+                    <h3>⚙️ Goodman Diagram (Fatigue Safety)</h3>
+                    <div class="goodman-chart-wrapper">
+                        <canvas id="goodmanChart"></canvas>
+                    </div>
+                    <div class="goodman-status" id="goodmanStatus">
+                        <span class="status-dot safe"></span>
+                        <span class="status-text">SAFE</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ZONE 3: THE HANDS (Right Panel - Control & Transparency) -->
+            <section class="glass-panel zone-hands">
+                <div class="panel-header">
+                    <h2>🤖 Explainable AI (XAI)</h2>
+                </div>
+
+                <!-- AI Diagnosis -->
+                <div class="diagnosis-box">
+                    <span class="label">AI DIAGNOSIS</span>
+                    <span class="value" id="aiDiagnosis">Initializing...</span>
+                    <div class="confidence-bar">
+                        <div class="fill" id="confidenceFill" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- XAI Reason -->
+                <div class="xai-reason-box" id="xaiReason">
+                    Awaiting data stream...
+                </div>
+
+                <!-- Action Log (XAI based) -->
+                <div class="action-log-container">
+                    <h3>Autonomous Brain Log</h3>
+                    <div class="log-list" id="actionLog">
+                        <!-- Log items injected by JS -->
+                    </div>
+                </div>
+
+                <!-- Motor Amps Waveform -->
+                <div class="amps-container">
+                    <h3>⚡ Motor Amps</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="ampsChart"></canvas>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- FOOTER (System Status Bar) -->
+        <footer class="footer">
+            SYSTEM STATUS: <span class="online" id="systemStatus">OFFLINE</span> |
+            LATENCY: <span class="mono" id="latency">--</span>ms |
+            MODEL: RESNET-18 + LSTM-AE |
+            SNR: <span class="mono" id="snrValue">--</span> dB
+        </footer>
+
+        <!-- ANALYTICS & INFO OVERLAY (Mission Briefing) -->
+        <div class="overlay-backdrop" id="infoOverlay">
+            <div class="mission-briefing-panel">
+                <div class="briefing-header">
+                    <h2>🚀 Mission Briefing: System Architecture</h2>
+                    <button class="close-btn" id="closeOverlay">×</button>
+                </div>
+
+                <div class="briefing-content">
+                    <!-- Section 1: Validation Matrix -->
+                    <div class="briefing-section">
+                        <h3>1. The "Problem vs. Solution" Proof</h3>
+                        <table class="validation-matrix">
+                            <thead>
+                                <tr>
+                                    <th>The Pain Point (Problem)</th>
+                                    <th>Your Specific Tech Solution</th>
+                                    <th>Why It Is Solved</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>"Manual interpretation is slow and subjective."</td>
+                                    <td><span class="highlight-cyan">The "Virtual Eye"</span> (ResNet18 Model)</td>
+                                    <td>Replaced human analysis (24h latency) with AI analysis (<100ms latency).</td>
+                                </tr>
+                                <tr>
+                                    <td>"Prolonged periods of Fluid Pound..."</td>
+                                    <td><span class="highlight-cyan">The "Autonomous Brain"</span> (Control Logic)</td>
+                                    <td>Detects fillage drop and <em>automatically</em> slows pump before pounding
+                                        starts.</td>
+                                </tr>
+                                <tr>
+                                    <td>"...resulting in accelerated rod fatigue."</td>
+                                    <td><span class="highlight-cyan">Goodman Diagram</span> & Soft Speed</td>
+                                    <td>Keeps rods in the "Safe Zone", doubling equipment life.</td>
+                                </tr>
+                                <tr>
+                                    <td>"...and wasted electricity."</td>
+                                    <td><span class="highlight-cyan">Fillage Optimization</span> (Target: 90%)</td>
+                                    <td>Only burns electricity when lifting full barrels.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Section 2: The Secret Sauce -->
+                    <div class="briefing-section secret-sauce">
+                        <h3>2. The "Secret Sauce"</h3>
+                        <div class="quote-box">
+                            <p>Most projects stop at <strong>"Detection"</strong>. We focus on
+                                <strong>"Correction"</strong>.
+                            </p>
+                            <div class="transformation">
+                                <span class="old">“I think the pump is broken, let me drive out there.”</span>
+                                <span class="arrow">➜</span>
+                                <span class="new">“The pump sensed a drop in inflow, slowed itself down, and is running
+                                    efficiently. I stayed in bed.”</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 3: Analytics & Feature Importance -->
+                    <div class="briefing-section analytics-grid">
+                        <div class="analytics-card">
+                            <h3>🧠 Model Architecture</h3>
+                            <ul class="model-specs">
+                                <li><strong>Visual Model:</strong> ResNet-18 (CNN)</li>
+                                <li><strong>Input:</strong> 224x224 Dynacard Images</li>
+                                <li><strong>Accuracy:</strong> 99.04% (Validation)</li>
+                                <li><strong>Temporal Model:</strong> LSTM Autoencoder</li>
+                                <li><strong>Input:</strong> 50-step Sensor Sequences</li>
+                            </ul>
+                        </div>
+                        <div class="analytics-card">
+                            <h3>📊 Feature Importance (SHAP)</h3>
+                            <div class="chart-container-small">
+                                <canvas id="featureChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section 4: The Math Behind the Magic -->
+                    <div class="briefing-section">
+                        <h3>3. The Math Behind the Magic</h3>
+                        <div class="quote-box">
+                            <p><strong>How We Calculate "Time to Failure" (TTF):</strong></p>
+                            <p class="mono" style="font-size: 0.9rem; color: var(--neon-cyan);">TTF = Base_Life ×
+                                Stress_Factor × Shock_Factor</p>
+                            <ul class="model-specs">
+                                <li><strong>Base Life:</strong> 5 Years (43,800 Hours)</li>
+                                <li><strong>Stress Factor:</strong> If Stress > 80% limit → Factor = 0.1 (90% reduction)
+                                </li>
+                                <li><strong>Shock Factor:</strong> If Fillage < 60% → Factor=0.05 (95% reduction)</li>
+                            </ul>
+                            <br>
+                            <p><strong>How We Calculate Savings:</strong></p>
+                            <ul class="model-specs">
+                                <li><strong>Strokes Saved:</strong> Count of cycles prevented by slowing down.</li>
+                                <li><strong>Energy Saved:</strong> Integration of (Power_Normal - Power_Reduced) over
+                                    time.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="static/app.js"></script>
+</body>
+
+</html>
